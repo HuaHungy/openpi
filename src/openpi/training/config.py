@@ -732,25 +732,25 @@ _CONFIGS = [
         ema_decay=None,
     ),
     TrainConfig(
-        name="pi05_libero",
-        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, discrete_state_input=False),
-        data=LeRobotLiberoDataConfig(
-            repo_id="physical-intelligence/libero",
-            base_config=DataConfig(prompt_from_task=True),
-            extra_delta_transform=False,
+        name="pi05_libero",  # 配置唯一名称，用于命令行选择与生成目录
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, discrete_state_input=False),  # π05 模型；动作序列长度 10；通过连续状态通道输入
+        data=LeRobotLiberoDataConfig(  # LeRobot 数据变换与加载配置（LIBERO）
+            repo_id="physical-intelligence/libero",  # 数据集来源（可替换为本地绝对路径）
+            base_config=DataConfig(prompt_from_task=True),  # 从任务字段自动注入 prompt
+            extra_delta_transform=False,  # LIBERO 原始动作为 delta，无需额外转换；若为绝对动作则改为 True
         ),
-        batch_size=256,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
+        batch_size=256,  # 全局批量大小（依据显存与设备数调整）
+        lr_schedule=_optimizer.CosineDecaySchedule(  # 学习率计划：预热 + 余弦退火
+            warmup_steps=10_000,  # 预热步数
+            peak_lr=5e-5,  # 峰值学习率
+            decay_steps=1_000_000,  # 退火总步数
+            decay_lr=5e-5,  # 结束学习率；等于峰值表示无衰减（保持常值）
         ),
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        pytorch_weight_path="/path/to/your/pytorch_weight_path",
-        num_train_steps=30_000,
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),  # 优化器：AdamW + 全局梯度裁剪
+        ema_decay=0.999,  # 启用 EMA 权重，用于更稳定的评估
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),  # 用 π05 基础权重初始化
+        pytorch_weight_path="/path/to/your/pytorch_weight_path",  # 若使用 PyTorch 训练/推理，填入转换后的权重目录；JAX 可忽略
+        num_train_steps=30_000,  # 训练总步数（批次）
     ),
     #
     # Fine-tuning Aloha configs.
@@ -758,18 +758,18 @@ _CONFIGS = [
     # This is a test config that is used to illustate how train on a custom LeRobot dataset.
     # For instuctions on how to convert and train on your own Aloha dataset see examples/aloha_real/README.md
     TrainConfig(
-        name="pi0_aloha_pen_uncap",
-        model=pi0_config.Pi0Config(),
-        data=LeRobotAlohaDataConfig(
-            repo_id="physical-intelligence/aloha_pen_uncap_diverse",
+        name="pi0_aloha_pen_uncap",  # 配置名称（ALOHA 真实机器人：开笔帽任务）
+        model=pi0_config.Pi0Config(),  # 使用 π0 模型架构
+        data=LeRobotAlohaDataConfig(  # ALOHA 平台的 LeRobot 数据配置
+            repo_id="physical-intelligence/aloha_pen_uncap_diverse",  # 数据来源（可改为本地绝对路径）
             assets=AssetsConfig(
-                assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
-                asset_id="trossen",
+                assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",  # 归一化统计来源目录
+                asset_id="trossen",  # 资产 ID（机器人平台标识）
             ),
-            default_prompt="uncap the pen",
+            default_prompt="uncap the pen",  # 默认语言指令（数据缺少 prompt 时注入）
             repack_transforms=_transforms.Group(
                 inputs=[
-                    _transforms.RepackTransform(
+                    _transforms.RepackTransform(  # 将原始键映射为模型期望的标准键
                         {
                             "images": {
                                 "cam_high": "observation.images.cam_high",
@@ -783,22 +783,22 @@ _CONFIGS = [
                 ]
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=20_000,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),  # 用 π0 基础权重初始化
+        num_train_steps=20_000,  # 训练总步数
     ),
     TrainConfig(
-        name="pi05_aloha_pen_uncap",
-        model=pi0_config.Pi0Config(pi05=True),
+        name="pi05_aloha_pen_uncap",  # 配置名称（ALOHA 真实机器人：开笔帽任务，π05）
+        model=pi0_config.Pi0Config(pi05=True),  # 使用 π05 模型架构
         data=LeRobotAlohaDataConfig(
-            repo_id="physical-intelligence/aloha_pen_uncap_diverse",
+            repo_id="physical-intelligence/aloha_pen_uncap_diverse",  # 数据来源（可改为本地绝对路径）
             assets=AssetsConfig(
-                assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+                assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",  # 归一化统计来源目录（π05）
                 asset_id="trossen",
             ),
-            default_prompt="uncap the pen",
+            default_prompt="uncap the pen",  # 默认语言指令
             repack_transforms=_transforms.Group(
                 inputs=[
-                    _transforms.RepackTransform(
+                    _transforms.RepackTransform(  # 键映射到模型标准输入
                         {
                             "images": {
                                 "cam_high": "observation.images.cam_high",
@@ -812,9 +812,9 @@ _CONFIGS = [
                 ]
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        num_train_steps=20_000,
-        batch_size=64,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),  # 用 π05 基础权重初始化
+        num_train_steps=20_000,  # 训练总步数
+        batch_size=64,  # 全局批量大小（示例设置）
     ),
     #
     # Fine-tuning DROID configs.
@@ -959,6 +959,148 @@ _CONFIGS = [
     #
     # RoboArena configs.
     #
+
+        # 这是一个“最全”的 π05 训练配置模板；将其加入到 _CONFIGS 列表即可通过命令行使用
+    TrainConfig(
+        name="pi05_RoboCOIN",  # 唯一名称，用于 CLI 选择与生成 assets/checkpoints 子目录
+        project_name="openpi",    # 日志系统（如 wandb）的项目名
+        exp_name=tyro.MISSING,    # 实验名（必填，作为检查点目录名的一部分）
+
+        # 模型配置：π05（flow-matching + AdaRMS 时间条件）
+        model=pi0_config.Pi0Config(
+            pi05=True,                 # 启用 π05 头部
+            action_dim=32,             # 动作维度；与 π05 基础权重一致（自动 Pad/裁剪）
+            action_horizon=16,         # 每样本的动作序列长度；按你的轨迹长度调
+            max_token_len=200,         # 文本/状态 token 的最大长度；π05 推荐较大值
+            discrete_state_input=False,# False: 连续状态通道；True: 状态作为离散 token 注入
+        # paligemma_variant="gemma_2b",     # 语言-视觉主干（PaliGemma/Gemma）的变体
+        # action_expert_variant="gemma_300m",# 动作专家 LLM 变体
+        ),
+
+        # 数据配置：LeRobot 格式（以 LIBERO 为例；自定义数据也按此管线）
+        data=LeRobotLiberoDataConfig(
+            repo_id="/absolute/path/to/your/lerobot_dataset",  # 数据集来源：HF 仓库名或本地绝对路径
+            base_config=DataConfig(
+                prompt_from_task=True,  # 从任务字段自动生成 prompt（若数据提供该字段）
+            ),
+            extra_delta_transform=True, # 若你的数据是“绝对动作”，训练时转为 delta 并在推理时还原；已是 delta 则设 False
+            assets=AssetsConfig(
+                assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets", # 归一化统计（norm stats）目录
+                asset_id="RoboCOIN",   # 资产 ID（机器人平台/数据域标识）；也决定存入 checkpoint 的 assets/<asset_id>
+            ),
+        ),
+
+        # 权重初始化与框架设置
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"), # 用 π05 基础权重初始化
+        pytorch_weight_path=None,             # 若使用 PyTorch 训练/推理，填转换后权重目录（含 model.safetensors）；JAX 训练可置 None
+        pytorch_training_precision="bfloat16",# PyTorch 训练精度：bfloat16 或 float32（JAX 不用）
+
+        # 优化器与学习率计划
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,  # 预热步数：前 1 万步线性升至峰值
+            peak_lr=5e-5,         # 峰值学习率
+            decay_steps=100_000,  # 退火总步数（按总训练步数调整）
+            decay_lr=5e-6,        # 结束学习率；若与峰值相同 => 无退火（恒定 LR）
+        ),
+        optimizer=_optimizer.AdamW(
+            b1=0.9, b2=0.95, eps=1e-8, weight_decay=1e-10, # AdamW 超参（weight_decay 设很小以避免 OOM）
+            clip_gradient_norm=1.0,                        # 全局梯度裁剪，稳定训练
+        ),
+        ema_decay=0.999,  # 启用 EMA 权重（评估更稳定；保存时按 EMA/非 EMA 分离）
+
+        # 训练/冻结控制
+        # freeze_filter=nnx.Nothing,  # 冻结过滤器（LoRA/分层冻结时可设置）；默认全部可训练
+
+        # 目录与运行控制
+        assets_base_dir="./assets",       # 本地资产（norm stats）基目录；生成/读取均用到
+        checkpoint_base_dir="./checkpoints", # 检查点基目录
+    
+        seed=42,          # 随机种子
+        batch_size=64,    # 全局批量大小（依显存调；单卡先用 32/64）
+        num_workers=2,    # 数据加载进程数（过大占内存；RLDS 需设 0）
+        num_train_steps=30_000, # 总训练步数（批次）
+
+        log_interval=100,   # 日志打印/记录间隔（步）
+        save_interval=1_000,# 保存检查点间隔（步）
+        keep_period=5_000,  # 保留周期：保留能整除该数的历史检查点（长期回溯）
+
+        overwrite=False,    # 若检查点目录已存在：是否覆盖（与 resume 互斥）
+        resume=False,       # 是否从最新检查点恢复（与 overwrite 互斥）
+        wandb_enabled=True, # 启用 W&B 记录
+
+        policy_metadata=None, # 传给策略服务的元数据（如 reset 位姿等）
+        fsdp_devices=1,       # JAX FSDP 分片设备数（>1 则跨设备分片，降显存/可能降速）
+    ),
+    TrainConfig(
+    name="pi05_RoboCOIN_lora",
+    project_name="openpi",
+    exp_name=tyro.MISSING,
+
+    # 1) 模型改为 LoRA 变体（π05 保持不变）
+    model=pi0_config.Pi0Config(
+        pi05=True,
+        action_dim=32,
+        action_horizon=16,
+        max_token_len=200,
+        discrete_state_input=False,
+        paligemma_variant="gemma_2b_lora",      # 主干设为 LoRA 变体
+        action_expert_variant="gemma_300m_lora" # 动作专家设为 LoRA 变体
+    ),
+
+    # 2) 数据（保持原有配置即可）
+    data=LeRobotLiberoDataConfig(
+        repo_id="/absolute/path/to/your/lerobot_dataset",
+        base_config=DataConfig(prompt_from_task=True),
+        extra_delta_transform=True,
+        assets=AssetsConfig(
+            assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+            asset_id="RoboCOIN",
+        ),
+    ),
+
+    # 权重初始化仍然用 π05 基础权重
+    weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+
+    # 3) 冻结与 EMA：只训练 LoRA；关闭 EMA
+    freeze_filter=pi0_config.Pi0Config(
+        pi05=True,
+        paligemma_variant="gemma_2b_lora",
+        action_expert_variant="gemma_300m_lora"
+    ).get_freeze_filter(),
+    ema_decay=None,
+
+    # 其它训练超参保持不变即可（如需可按显存调小 batch）
+    lr_schedule=_optimizer.CosineDecaySchedule(
+        warmup_steps=10_000,
+        peak_lr=5e-5,
+        decay_steps=100_000,
+        decay_lr=5e-6,
+    ),
+    optimizer=_optimizer.AdamW(
+        b1=0.9, b2=0.95, eps=1e-8, weight_decay=1e-10,
+        clip_gradient_norm=1.0,
+    ),
+
+    assets_base_dir="./assets",
+    checkpoint_base_dir="./checkpoints",
+
+    seed=42,
+    batch_size=64,
+    num_workers=2,
+    num_train_steps=30_000,
+
+    log_interval=100,
+    save_interval=1_000,
+    keep_period=5_000,
+
+    overwrite=False,
+    resume=False,
+    wandb_enabled=True,
+
+    policy_metadata=None,
+    fsdp_devices=1,
+)
+    
     *roboarena_config.get_roboarena_configs(),
 ]
 
